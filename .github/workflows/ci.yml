@@ -15,8 +15,14 @@ jobs:
       - uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
         with:
           dotnet-version: 10.0.300
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 24
       - shell: pwsh
         run: ./eng/build.ps1
+      - shell: pwsh
+        working-directory: ./editors/vscode
+        run: npm run check
       - shell: pwsh
         run: |
           $rusc = './artifacts/rusc/win-x64/rusc.exe'

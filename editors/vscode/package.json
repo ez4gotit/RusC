@@ -1,0 +1,165 @@
+{
+  "name": "ruslang",
+  "displayName": "RusLang — суверенный язык",
+  "description": "Подсветка, диагностика, навигация, сниппеты и команды автономного компилятора RusLang.",
+  "version": "0.1.0",
+  "publisher": "ez4gotit",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets"
+  ],
+  "keywords": [
+    "ruslang",
+    "russian",
+    "русский",
+    "язык программирования"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ez4gotit/RusC.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ez4gotit/RusC/issues"
+  },
+  "homepage": "https://github.com/ez4gotit/RusC",
+  "main": "./extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onLanguage:ruslang",
+    "onCommand:ruslang.build",
+    "onCommand:ruslang.run",
+    "onCommand:ruslang.reveal",
+    "onCommand:ruslang.verify",
+    "onCommand:ruslang.health"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "ruslang",
+        "aliases": [
+          "RusLang",
+          "РусЛанг"
+        ],
+        "extensions": [
+          ".rus"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ruslang",
+        "scopeName": "source.ruslang",
+        "path": "./syntaxes/ruslang.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "ruslang",
+        "path": "./snippets/ruslang.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ruslang.build",
+        "title": "RusLang: Собрать программу",
+        "category": "RusLang"
+      },
+      {
+        "command": "ruslang.run",
+        "title": "RusLang: Запустить программу",
+        "category": "RusLang"
+      },
+      {
+        "command": "ruslang.reveal",
+        "title": "RusLang: Раскрыть сгенерированный C#",
+        "category": "RusLang"
+      },
+      {
+        "command": "ruslang.verify",
+        "title": "RusLang: Проверить автономный EXE",
+        "category": "RusLang"
+      },
+      {
+        "command": "ruslang.health",
+        "title": "RusLang: Показать здравие компилятора",
+        "category": "RusLang"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "ruslang.run",
+          "when": "resourceLangId == ruslang",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ruslang.build",
+          "when": "resourceLangId == ruslang",
+          "group": "1_modification"
+        },
+        {
+          "command": "ruslang.run",
+          "when": "resourceLangId == ruslang",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "ruslang.build",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorLangId == ruslang"
+      },
+      {
+        "command": "ruslang.run",
+        "key": "ctrl+f5",
+        "mac": "cmd+f5",
+        "when": "editorLangId == ruslang"
+      }
+    ],
+    "configuration": {
+      "title": "RusLang",
+      "properties": {
+        "ruslang.compilerPath": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Путь к автономному rusc.exe. Пустое значение включает автоматический поиск."
+        },
+        "ruslang.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Проверять синтаксис активного .rus-файла при сохранении."
+        },
+        "ruslang.checkOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Проверять синтаксис .rus-файла при открытии."
+        },
+        "ruslang.showOutputOnSuccess": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "Показывать канал RusLang после успешной команды."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js && node ./scripts/validate.js",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  }
+}

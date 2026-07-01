@@ -33,6 +33,7 @@ internal static class Program
         return args[0] switch
         {
             "версия" or "--версия" => Version(),
+            "право" => License(),
             "здравие" => Doctor(),
             "осмотреть" when args.Length == 2 => Inspect(args[1]),
             "проверить" when args.Length == 2 => Verify(args[1]),
@@ -169,12 +170,26 @@ internal static class Program
     private static int Doctor()
     {
         Console.WriteLine($"компилятор: {GetVersion()}");
+        Console.WriteLine("автор: ez4gotit");
+        Console.WriteLine("истоки: https://github.com/ez4gotit/RusC");
+        Console.WriteLine("лицензия: AGPL-3.0-or-later с RusLang Output Exception 1.0");
         Console.WriteLine("язык: 0.1");
         Console.WriteLine("целевая-среда: net10.0");
         Console.WriteLine($"платформа-компилятора: {RuntimeInformation.RuntimeIdentifier}");
         Console.WriteLine($"формат-ruspack: {RusPackVersion.Current}");
         Console.WriteLine($"протокол-запуска: {RusPackConstants.RuntimeHostProtocol}");
         Console.WriteLine($"встроенные-ссылки: {ReferencePackLoader.Load().Count}");
+        return 0;
+    }
+
+    private static int License()
+    {
+        Console.WriteLine("RusLang, Copyright (C) 2026 ez4gotit");
+        Console.WriteLine("AGPL-3.0-or-later с RusLang Output Exception 1.0");
+        Console.WriteLine("Исходный проект: https://github.com/ez4gotit/RusC");
+        Console.WriteLine("Полные условия: https://github.com/ez4gotit/RusC/blob/master/LICENSE");
+        Console.WriteLine(
+            "Программы пользователей и созданные ими EXE могут распространяться под любой лицензией.");
         return 0;
     }
 
@@ -264,7 +279,8 @@ internal static class Program
     private static void PrintUsage() =>
         Console.WriteLine(
             "Использование: rusc " +
-            "<собрать|запустить|раскрыть|осмотреть|проверить|здравие|версия> [аргументы]");
+            "<собрать|запустить|раскрыть|осмотреть|проверить|здравие|версия|право> " +
+            "[аргументы]");
 
     private sealed record BuildOptions(
         string OutputPath,

@@ -20,6 +20,10 @@ jobs:
         with:
           dotnet-version: 10.0.300
 
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 24
+
       - name: Проверить тег и собрать автономный компилятор
         shell: pwsh
         run: |
@@ -68,6 +72,8 @@ jobs:
           New-Item -ItemType Directory -Path $releaseDirectory | Out-Null
           Copy-Item './artifacts/rusc/win-x64/rusc.exe' $releaseDirectory
           Copy-Item './README.md' $releaseDirectory
+          Copy-Item './LICENSE' $releaseDirectory
+          Copy-Item './NOTICE' $releaseDirectory
 
           $archive = Join-Path $env:RUNNER_TEMP "$name.zip"
           Compress-Archive -Path "$releaseDirectory/*" -DestinationPath $archive
@@ -78,6 +84,16 @@ jobs:
           "archive=$archive" >> $env:GITHUB_OUTPUT
           "checksum=$checksum" >> $env:GITHUB_OUTPUT
 
+      - name: Собрать расширение Visual Studio Code
+        id: vscode
+        shell: pwsh
+        working-directory: ./editors/vscode
+        run: |
+          npm run check
+          $vsix = Join-Path $env:RUNNER_TEMP 'ruslang-vscode-0.1.0.vsix'
+          npx --yes @vscode/vsce@3.9.2 package --no-dependencies --out $vsix
+          "vsix=$vsix" >> $env:GITHUB_OUTPUT
+
       - name: Создать предварительный выпуск GitHub
         shell: pwsh
         env:
@@ -86,6 +102,7 @@ jobs:
           gh release create '${{ github.ref_name }}' `
               '${{ steps.package.outputs.archive }}' `
               '${{ steps.package.outputs.checksum }}' `
+              '${{ steps.vscode.outputs.vsix }}' `
               --repo '${{ github.repository }}' `
               --verify-tag `
               --prerelease `

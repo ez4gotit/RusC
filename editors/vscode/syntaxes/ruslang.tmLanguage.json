@@ -1,0 +1,175 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "RusLang",
+  "scopeName": "source.ruslang",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#members"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#builtins"
+    },
+    {
+      "include": "#constants"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.ruslang",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ruslang",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ruslang",
+              "match": "\\\\(?:[\\\\\"nrt]|u[0-9A-Fa-f]{4})"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.ruslang",
+          "match": "(?<![\\p{L}\\p{N}_])(?:\\d+(?:\\.\\d+)?)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "match": "(?i)(?<![\\p{L}\\p{N}_])((?:отвлечённый|последний)\\s+)?(род)\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.ruslang"
+            },
+            "2": {
+              "name": "storage.type.class.ruslang"
+            },
+            "3": {
+              "name": "entity.name.type.class.ruslang"
+            }
+          }
+        },
+        {
+          "name": "support.type.builtin.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:целое|дробное|строка|правдиво|пусто)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "members": {
+      "patterns": [
+        {
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(черта)\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.ruslang"
+            },
+            "2": {
+              "name": "variable.other.property.ruslang"
+            }
+          }
+        },
+        {
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(умение)\\s+[\\p{L}_][\\p{L}\\p{N}_]*\\s+([\\p{L}_][\\p{L}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.ruslang"
+            },
+            "2": {
+              "name": "entity.name.function.ruslang"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:Князь|Царь|Государь|если|аще|иначе|инако|пока|доколе|для|ступай|продолжить|далее|прервать|пресеки|выход|изыди|воздать|конец|аминь|совершено)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.declaration.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:пусть|наречь|да\\s+будет|призвать|род|наследует|черта|зачин|умение|породить|воззвать|воззови|при|от\\s+предка|без\\s+деяния)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "storage.modifier.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:всенародное|всенародная|всенародный|родовое|родовая|родовой|земское|земская|земской|сокровенное|сокровенная|сокровенный|общинное|общинная|наследуемое|переиначенное|отвлечённое|отвлечённый|последнее|последний)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:есть|это|суть|бысть)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.operator.arithmetic.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:плюс|сложить|минус|отнять|отъять|умножить|множить|разделить|делить|остаток|прибавить|приобщить|убавить|увеличить|возрасти|уменьшить|умалить)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.operator.comparison.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:точно|воистину|бля\\s+буду|не\\s+есть|это\\s+не|не\\s+суть|суть\\s+не|больше|паче|меньше|менее|не\\s+меньше|не\\s+больше|не\\s+менее|не\\s+паче)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.operator.logical.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:и|да|или|али|не)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.operator.access.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:по|на\\s+месте|у|сей|предок)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:печать|молви|рцы|вещай|ошибка|возопи|длина|мера|соединить|сочетать|совокупить)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "storage.type.sequence.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:ряд|строй|полк)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.ruslang",
+          "match": "(?i)(?<![\\p{L}\\p{N}_])(?:истина|правда|истинно|ложь|кривда|ложно)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    }
+  }
+}

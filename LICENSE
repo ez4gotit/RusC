@@ -1,0 +1,85 @@
+RusLang License Notice
+AGPL-3.0-or-later with RusLang Output Exception 1.0
+
+Copyright (C) 2026 ez4gotit
+Original project: https://github.com/ez4gotit/RusC
+
+1. BASE LICENSE
+
+Except for the additional permission and additional terms below, RusLang,
+including its compiler, RuntimeHost, libraries, Visual Studio Code extension,
+documentation, and build tools, is free software licensed under the GNU Affero
+General Public License, version 3, or (at your option) any later version
+published by the Free Software Foundation ("AGPL").
+
+The complete, unmodified AGPL version 3 text is incorporated into this notice
+by reference and is available at:
+
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+You may use, study, copy, fork, modify, and distribute RusLang under those
+terms. Modified versions offered to users over a computer network must offer
+their complete corresponding source as required by AGPL section 13.
+
+2. REQUIRED AUTHOR ATTRIBUTION
+
+Under AGPL section 7(b), every copy or modified version of RusLang must
+preserve the following reasonable author attribution in its source repository,
+documentation, and any screen or command that displays legal notices:
+
+    Based on RusLang, originally created by ez4gotit.
+    Original project: https://github.com/ez4gotit/RusC
+
+The attribution must remain readable and must not be hidden among generated
+files or dependency notices.
+
+3. MODIFIED VERSIONS
+
+Under AGPL section 7(c), a modified version must prominently state that it was
+modified, identify the date of modification, and must not claim to be an
+official release of the original RusLang project.
+
+4. RUSLANG OUTPUT EXCEPTION 1.0
+
+As an additional permission under AGPL section 7, the copyright holder grants
+permission to use an official or compliant modified RusLang compiler to create
+Target Programs under terms of your choice.
+
+For this exception:
+
+- "User Source" means source code written in RusLang by a compiler user that
+  is not copied or adapted from RusLang's own source code.
+- "Target Program" means executable or intermediate output produced from User
+  Source by the normal RusLang compilation process.
+- "Runtime Material" means portions of RuntimeHost, RusPack support code, or
+  other support material that the compiler automatically embeds into a Target
+  Program as part of that normal compilation process.
+
+User Source and Target Programs are not covered works merely because they were
+written in the RusLang language, processed by the compiler, use the compiler's
+public interfaces, or contain automatically embedded Runtime Material.
+
+You may use, keep private, sell, sublicense, copy, and distribute User Source
+and Target Programs, including proprietary and commercial programs, under
+terms of your choice. You are not required to publish their source code or
+mention RusLang or ez4gotit.
+
+This exception does not apply to code copied or adapted from the compiler,
+editor extension, documentation, or other RusLang source beyond Runtime
+Material inserted automatically by the unmodified compilation process.
+
+5. NO TRADEMARK LICENSE
+
+This license does not grant rights in the names "RusLang" or "RusC", project
+logos, or other source-identifying marks. Forks may make truthful statements
+about their origin but must not imply endorsement or official status.
+
+6. WARRANTY
+
+RusLang is provided without warranty, to the extent permitted by applicable
+law, as further stated in AGPL sections 15 and 16.
+
+If these additional terms conflict with the AGPL, they are intended to operate
+only to the extent permitted by AGPL section 7. The Output Exception is an
+additional permission; the attribution, origin-marking, and trademark terms
+are additional terms under AGPL section 7(b), 7(c), and 7(e).

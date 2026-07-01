@@ -1,0 +1,19 @@
+RusLang Visual Studio Code Extension
+Copyright (C) 2026 ez4gotit
+
+This extension is part of RusLang and is licensed under the GNU Affero General
+Public License, version 3, or (at your option) any later version.
+
+Official license text:
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+Required attribution:
+
+    Based on RusLang, originally created by ez4gotit.
+    Original project: https://github.com/ez4gotit/RusC
+
+Modified versions must preserve this attribution, state that they were
+modified, and must not claim to be official RusLang releases.
+
+The RusLang Output Exception applies to programs produced by the compiler. It
+does not change the AGPL terms of this editor extension.
