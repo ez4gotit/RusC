@@ -16,7 +16,7 @@ public sealed class CompilerTests : IDisposable
         var source = Path.Combine(directory, "Пример.rus");
         File.WriteAllText(
             source,
-            "призвать Ярило\nЦарь\nпечать \"Привет\"\nконец\n");
+            "Князь\nрцы \"Привет\"\nаминь\n");
 
         var artifact = new RusCompiler().Compile(
             new CompilationRequest(source, "Пример", Debug: false, References: []),
@@ -55,8 +55,6 @@ public sealed class CompilerTests : IDisposable
         File.WriteAllText(
             source,
             """
-            призвать Сварога
-            призвать Ярило
             Царь
                 пусть числа есть ряд 3 и 1 и 2
                 для проход от 0 до длина числа минус 1
@@ -87,12 +85,12 @@ public sealed class CompilerTests : IDisposable
     public void UnclosedEntryPointReportsOpeningLine()
     {
         var (source, diagnostics) = RusSourceEmitter.Emit(
-            "призвать Ярило\nЦарь\n    печать \"да\"\n",
+            "Царь\n    печать \"да\"\n",
             "test.rus");
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal("RUS1006", diagnostic.Code);
-        Assert.Equal(2, diagnostic.Line);
+        Assert.Equal(1, diagnostic.Line);
         Assert.Contains("Console.WriteLine(\"да\")", source, StringComparison.Ordinal);
     }
 
@@ -105,25 +103,82 @@ public sealed class CompilerTests : IDisposable
     public void ClassicPunctuationIsRejected(string command)
     {
         var (_, diagnostics) = RusSourceEmitter.Emit(
-            $"призвать Сварога\nпризвать Ярило\nЦарь\n{command}\nконец\n",
+            $"Царь\n{command}\nконец\n",
             "test.rus");
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal("RUS1010", diagnostic.Code);
     }
 
-    [Theory]
-    [InlineData("печать \"свет\"", "Ярило")]
-    [InlineData("пусть числа есть ряд 1 и 2", "Сварога")]
-    public void StandardConstructRequiresItsInvokedModule(string command, string module)
+    [Fact]
+    public void StandardConstructsDoNotRequireInvocations()
     {
-        var (_, diagnostics) = RusSourceEmitter.Emit(
-            $"Царь\n{command}\nконец\n",
+        var (source, diagnostics) = RusSourceEmitter.Emit(
+            "Царь\nпусть числа есть ряд 1 и 2\nпечать соединить \" \" и числа\nконец\n",
             "test.rus");
 
-        var diagnostic = Assert.Single(diagnostics);
-        Assert.Equal("RUS1012", diagnostic.Code);
-        Assert.Contains($"призвать {module}", diagnostic.Message, StringComparison.Ordinal);
+        Assert.Empty(diagnostics);
+        Assert.Contains("Console.WriteLine", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OldRussianAliasesCompile()
+    {
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, "дружина.rus");
+        File.WriteAllText(
+            source,
+            """
+            Князь
+                наречь числа суть строй 3 да 1 да 2
+                наречь мера_строя бысть мера числа
+                ступай место от 0 до мера_строя
+                    аще числа на месте место не паче 3
+                        рцы числа на месте место
+                    инако
+                        возопи "нестроение"
+                    аминь
+                аминь
+            аминь
+            """);
+
+        var artifact = new RusCompiler().Compile(
+            new CompilationRequest(source, "дружина", Debug: false, References: []),
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(
+            artifact.Diagnostics,
+            static value => value.Severity == RusDiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void AdditionalAliasesCompile()
+    {
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, "государь.rus");
+        File.WriteAllText(
+            source,
+            """
+            Государь
+                да будет место бысть 0
+                да будет числа есть полк 4 и 5
+                доколе место менее мера числа
+                    вещай числа по место
+                    место возрасти
+                совершено
+                аще правда али кривда
+                    молви совокупить " " и числа
+                совершено
+            совершено
+            """);
+
+        var artifact = new RusCompiler().Compile(
+            new CompilationRequest(source, "государь", Debug: false, References: []),
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(
+            artifact.Diagnostics,
+            static value => value.Severity == RusDiagnosticSeverity.Error);
     }
 
     [Theory]

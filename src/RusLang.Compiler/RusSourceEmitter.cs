@@ -29,7 +29,6 @@ public static partial class RusSourceEmitter
         var body = new StringBuilder();
         var blocks = new Stack<OpenBlock>();
         var variables = new HashSet<string>(StringComparer.Ordinal);
-        var invokedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var hasEntryPoint = false;
         var insideEntryPoint = false;
         var lines = source.ReplaceLineEndings("\n").Split('\n');
@@ -44,25 +43,24 @@ public static partial class RusSourceEmitter
                 continue;
             }
 
-            if (TryReadArgument(line, "призвать", out var module))
+            if (TryReadArgument(line, out var module, "призвать"))
             {
                 if (hasEntryPoint || !IdentifierPattern().IsMatch(module))
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1007",
-                        "Модуль призывается до «Царя»: призвать Имя");
+                        "Внешняя дружина призывается до точки входа: призвать Имя");
                     continue;
                 }
 
-                invokedModules.Add(CanonicalizeModuleName(module));
                 continue;
             }
 
-            if (line.Equals("Царь", StringComparison.OrdinalIgnoreCase))
+            if (IsKeyword(line, "Царь", "Князь", "Государь"))
             {
                 if (hasEntryPoint)
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1008",
-                        "В программе может быть только один «Царь»");
+                        "В программе может быть только одна точка входа");
                     continue;
                 }
 
@@ -75,7 +73,7 @@ public static partial class RusSourceEmitter
             if (!insideEntryPoint)
             {
                 AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1009",
-                    "Исполняемая команда должна находиться между «Царь» и его «конец»");
+                    "Исполняемая команда должна находиться внутри точки входа");
                 continue;
             }
 
@@ -86,56 +84,32 @@ public static partial class RusSourceEmitter
                 continue;
             }
 
-            if (UsesSvarogSyntax(line)
-                && !RequireModule(
-                    invokedModules,
-                    "Сварог",
-                    diagnostics,
-                    sourcePath,
-                    lineNumber,
-                    raw,
-                    "работы с рядами"))
-            {
-                continue;
-            }
-
             AppendLineDirective(body, sourcePath, lineNumber);
 
-            if (TryReadArgument(line, "печать", out var printValue))
+            if (TryReadArgument(
+                    line, out var printValue, "печать", "молви", "рцы", "вещай"))
             {
-                if (!RequireModule(
-                        invokedModules, "Ярило", diagnostics, sourcePath, lineNumber, raw, "печать"))
-                {
-                    continue;
-                }
-
                 body.Append("Console.WriteLine(")
                     .Append(ToOutputExpression(printValue, variables))
                     .AppendLine(");");
             }
-            else if (TryReadArgument(line, "ошибка", out var errorValue))
+            else if (TryReadArgument(line, out var errorValue, "ошибка", "возопи"))
             {
-                if (!RequireModule(
-                        invokedModules, "Ярило", diagnostics, sourcePath, lineNumber, raw, "ошибка"))
-                {
-                    continue;
-                }
-
                 body.Append("Console.Error.WriteLine(")
                     .Append(ToOutputExpression(errorValue, variables))
                     .AppendLine(");");
             }
-            else if (TryReadArgument(line, "выход", out var exitCode))
+            else if (TryReadArgument(line, out var exitCode, "выход", "изыди"))
             {
                 body.Append("return ").Append(TranslateExpression(exitCode)).AppendLine(";");
             }
-            else if (TryReadArgument(line, "пусть", out var declaration))
+            else if (TryReadArgument(line, out var declaration, "пусть", "наречь", "да будет"))
             {
                 var match = DeclarationPattern().Match(declaration);
                 if (!match.Success)
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1002",
-                        "Ожидалось объявление вида: пусть имя есть выражение");
+                        "Ожидалось объявление вида: наречь имя суть выражение");
                     continue;
                 }
 
@@ -145,18 +119,18 @@ public static partial class RusSourceEmitter
                     .Append(TranslateExpression(match.Groups["expression"].Value))
                     .AppendLine(";");
             }
-            else if (TryReadArgument(line, "если", out var condition))
+            else if (TryReadArgument(line, out var condition, "если", "аще"))
             {
                 blocks.Push(new OpenBlock(BlockKind.If, lineNumber));
                 body.Append("if (").Append(TranslateExpression(condition)).AppendLine(")");
                 body.AppendLine("{");
             }
-            else if (line.Equals("иначе", StringComparison.OrdinalIgnoreCase))
+            else if (IsKeyword(line, "иначе", "инако"))
             {
                 if (blocks.Count == 0 || blocks.Peek().Kind != BlockKind.If || blocks.Peek().HasElse)
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1003",
-                        "«иначе» должно находиться внутри незавершённого блока «если»");
+                        "«иначе» или «инако» должно находиться внутри условия");
                     continue;
                 }
 
@@ -166,19 +140,19 @@ public static partial class RusSourceEmitter
                 body.AppendLine("else");
                 body.AppendLine("{");
             }
-            else if (TryReadArgument(line, "пока", out condition))
+            else if (TryReadArgument(line, out condition, "пока", "доколе"))
             {
                 blocks.Push(new OpenBlock(BlockKind.While, lineNumber));
                 body.Append("while (").Append(TranslateExpression(condition)).AppendLine(")");
                 body.AppendLine("{");
             }
-            else if (TryReadArgument(line, "для", out var forClause))
+            else if (TryReadArgument(line, out var forClause, "для", "ступай"))
             {
                 var match = ForPattern().Match(forClause);
                 if (!match.Success)
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1004",
-                        "Ожидался цикл вида: для имя от начало до граница");
+                        "Ожидался цикл вида: ступай имя от начало до граница");
                     continue;
                 }
 
@@ -192,12 +166,12 @@ public static partial class RusSourceEmitter
                     .Append("; ").Append(name).AppendLine("++)");
                 body.AppendLine("{");
             }
-            else if (line.Equals("конец", StringComparison.OrdinalIgnoreCase))
+            else if (IsKeyword(line, "конец", "аминь", "совершено"))
             {
                 if (blocks.Count == 0)
                 {
                     AddDiagnostic(diagnostics, sourcePath, lineNumber, raw, "RUS1005",
-                        "Лишнее слово «конец»: открытого блока нет");
+                        "Лишний завершитель: открытого блока нет");
                     continue;
                 }
 
@@ -211,11 +185,11 @@ public static partial class RusSourceEmitter
                     body.AppendLine("}");
                 }
             }
-            else if (line.Equals("прервать", StringComparison.OrdinalIgnoreCase))
+            else if (IsKeyword(line, "прервать", "пресеки"))
             {
                 body.AppendLine("break;");
             }
-            else if (line.Equals("продолжить", StringComparison.OrdinalIgnoreCase))
+            else if (IsKeyword(line, "продолжить", "далее"))
             {
                 body.AppendLine("continue;");
             }
@@ -249,7 +223,7 @@ public static partial class RusSourceEmitter
                 sourcePath,
                 1,
                 1,
-                "Точка входа «Царь» не найдена"));
+                "Точка входа «Князь», «Царь» или «Государь» не найдена"));
         }
 
         foreach (var block in blocks)
@@ -260,7 +234,7 @@ public static partial class RusSourceEmitter
                 sourcePath,
                 block.Line,
                 1,
-                "Блок не закрыт словом «конец»"));
+                "Блок не закрыт словом «аминь», «конец» или «совершено»"));
         }
 
         var generated = $$"""
@@ -284,17 +258,26 @@ public static partial class RusSourceEmitter
         return (generated, diagnostics);
     }
 
-    private static bool TryReadArgument(string line, string keyword, out string argument)
+    private static bool TryReadArgument(
+        string line,
+        out string argument,
+        params string[] keywords)
     {
-        if (line.StartsWith(keyword + " ", StringComparison.OrdinalIgnoreCase))
+        foreach (var keyword in keywords)
         {
-            argument = line[(keyword.Length + 1)..].Trim();
-            return true;
+            if (line.StartsWith(keyword + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                argument = line[(keyword.Length + 1)..].Trim();
+                return true;
+            }
         }
 
         argument = string.Empty;
         return false;
     }
+
+    private static bool IsKeyword(string line, params string[] keywords) =>
+        keywords.Any(keyword => line.Equals(keyword, StringComparison.OrdinalIgnoreCase));
 
     private static string ToOutputExpression(string text, IReadOnlySet<string> variables)
     {
@@ -321,12 +304,22 @@ public static partial class RusSourceEmitter
 
         var firstWord = IdentifierAtStartPattern().Match(value).Value;
         return variables.Contains(firstWord)
-            || firstWord.Equals("ряд", StringComparison.OrdinalIgnoreCase)
-            || firstWord.Equals("длина", StringComparison.OrdinalIgnoreCase)
-            || firstWord.Equals("соединить", StringComparison.OrdinalIgnoreCase)
-            || firstWord.Equals("истина", StringComparison.OrdinalIgnoreCase)
-            || firstWord.Equals("ложь", StringComparison.OrdinalIgnoreCase)
+            || IsKeyword(
+                firstWord,
+                "ряд",
+                "строй",
+                "полк",
+                "длина",
+                "мера",
+                "соединить",
+                "сочетать",
+                "совокупить",
+                "истина",
+                "правда",
+                "ложь",
+                "кривда")
             || value.Contains(" по ", StringComparison.OrdinalIgnoreCase)
+            || value.Contains(" на месте ", StringComparison.OrdinalIgnoreCase)
             || value.Contains('+')
             || value.Contains('*')
             || value.Contains('/');
@@ -335,9 +328,12 @@ public static partial class RusSourceEmitter
     private static string TranslateExpression(string expression)
     {
         var value = expression.Trim();
-        if (value.StartsWith("ряд ", StringComparison.OrdinalIgnoreCase))
+        var rowKeyword = new[] { "ряд", "строй", "полк" }
+            .FirstOrDefault(keyword =>
+                value.StartsWith(keyword + " ", StringComparison.OrdinalIgnoreCase));
+        if (rowKeyword is not null)
         {
-            var elements = SplitByAnd(value[4..]);
+            var elements = SplitByAnd(value[(rowKeyword.Length + 1)..]);
             return $"new[] {{ {string.Join(", ", elements.Select(TranslateExpression))} }}";
         }
 
@@ -402,19 +398,19 @@ public static partial class RusSourceEmitter
                 var word = value[start..index];
                 result.Append(word.ToLowerInvariant() switch
                 {
-                    "истина" => "true",
-                    "ложь" => "false",
-                    "и" => "&&",
-                    "или" => "||",
+                    "истина" or "правда" or "истинно" => "true",
+                    "ложь" or "кривда" or "ложно" => "false",
+                    "и" or "да" => "&&",
+                    "или" or "али" => "||",
                     "не" => "!",
-                    "плюс" => "+",
-                    "минус" => "-",
-                    "умножить" => "*",
-                    "разделить" => "/",
+                    "плюс" or "сложить" => "+",
+                    "минус" or "отнять" or "отъять" => "-",
+                    "умножить" or "множить" => "*",
+                    "разделить" or "делить" => "/",
                     "остаток" => "%",
-                    "больше" => ">",
-                    "меньше" => "<",
-                    "точно" => "==",
+                    "больше" or "паче" => ">",
+                    "меньше" or "менее" => "<",
+                    "точно" or "воистину" or "суть" => "==",
                     _ => word,
                 });
                 continue;
@@ -443,7 +439,7 @@ public static partial class RusSourceEmitter
             var target = TranslateTarget(unary.Groups["target"].Value);
             var operation = unary.Groups["operation"].Value.ToLowerInvariant() switch
             {
-                "плюс плюс" or "увеличить" => "++",
+                "плюс плюс" or "увеличить" or "возрасти" => "++",
                 _ => "--",
             };
             source = $"{target}{operation};";
@@ -459,8 +455,8 @@ public static partial class RusSourceEmitter
                 @"\s+",
                 " ") switch
             {
-                "плюс есть" or "прибавить" => "+=",
-                "минус есть" or "убавить" => "-=",
+                "плюс есть" or "прибавить" or "приобщить" => "+=",
+                "минус есть" or "убавить" or "отъять" => "-=",
                 "умножить есть" or "умножить на" => "*=",
                 "разделить есть" or "разделить на" => "/=",
                 _ => "%=",
@@ -518,10 +514,10 @@ public static partial class RusSourceEmitter
             value,
             static match => Regex.Replace(match.Value.ToLowerInvariant(), @"\s+", " ") switch
             {
-                "не есть" or "это не" => "!=",
+                "не есть" or "это не" or "не суть" or "суть не" => "!=",
                 "бля буду" => "==",
-                "не меньше" => ">=",
-                "не больше" => "<=",
+                "не меньше" or "не менее" => ">=",
+                "не больше" or "не паче" => "<=",
                 _ => match.Value,
             });
 
@@ -558,14 +554,21 @@ public static partial class RusSourceEmitter
                 continue;
             }
 
-            if (index > 0
-                && index + 2 < value.Length
+            var separatorLength = character is 'и' or 'И'
+                ? 1
+                : index + 1 < value.Length
+                  && value[index..(index + 2)].Equals("да", StringComparison.OrdinalIgnoreCase)
+                    ? 2
+                    : 0;
+            if (separatorLength > 0
+                && index > 0
+                && index + separatorLength < value.Length
                 && char.IsWhiteSpace(value[index - 1])
-                && (character is 'и' or 'И')
-                && char.IsWhiteSpace(value[index + 1]))
+                && char.IsWhiteSpace(value[index + separatorLength]))
             {
                 parts.Add(value[start..index].Trim());
-                start = index + 1;
+                start = index + separatorLength;
+                index += separatorLength - 1;
             }
         }
 
@@ -614,96 +617,6 @@ public static partial class RusSourceEmitter
         return false;
     }
 
-    private static bool UsesSvarogSyntax(string value)
-    {
-        var inString = false;
-        var escaped = false;
-        for (var index = 0; index < value.Length;)
-        {
-            var character = value[index];
-            if (inString)
-            {
-                index++;
-                if (escaped)
-                {
-                    escaped = false;
-                }
-                else if (character == '\\')
-                {
-                    escaped = true;
-                }
-                else if (character == '"')
-                {
-                    inString = false;
-                }
-
-                continue;
-            }
-
-            if (character == '"')
-            {
-                inString = true;
-                index++;
-                continue;
-            }
-
-            if (char.IsLetter(character) || character == '_')
-            {
-                var start = index++;
-                while (index < value.Length
-                       && (char.IsLetterOrDigit(value[index]) || value[index] == '_'))
-                {
-                    index++;
-                }
-
-                var word = value[start..index];
-                if (word.Equals("ряд", StringComparison.OrdinalIgnoreCase)
-                    || word.Equals("длина", StringComparison.OrdinalIgnoreCase)
-                    || word.Equals("соединить", StringComparison.OrdinalIgnoreCase)
-                    || word.Equals("по", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                continue;
-            }
-
-            index++;
-        }
-
-        return false;
-    }
-
-    private static bool RequireModule(
-        IReadOnlySet<string> modules,
-        string module,
-        ICollection<RusDiagnostic> diagnostics,
-        string sourcePath,
-        int lineNumber,
-        string raw,
-        string construct)
-    {
-        if (modules.Contains(module))
-        {
-            return true;
-        }
-
-        AddDiagnostic(
-            diagnostics,
-            sourcePath,
-            lineNumber,
-            raw,
-            "RUS1012",
-            $"Для «{construct}» добавьте перед «Царём»: призвать " +
-            $"{(module == "Сварог" ? "Сварога" : module)}");
-        return false;
-    }
-
-    private static string CanonicalizeModuleName(string module) =>
-        module.Equals("Сварога", StringComparison.OrdinalIgnoreCase)
-            ? "Сварог"
-            : module;
-
     private static void AppendLineDirective(StringBuilder body, string sourcePath, int lineNumber) =>
         body.Append("#line ").Append(lineNumber).Append(" \"")
             .Append(EscapePath(sourcePath)).AppendLine("\"");
@@ -740,13 +653,14 @@ public static partial class RusSourceEmitter
     }
 
     [GeneratedRegex(
-        @"^(?<name>[\p{L}_][\p{L}\p{Nd}_]*)\s+(?:есть|это)\s+(?<expression>.+)$",
+        @"^(?<name>[\p{L}_][\p{L}\p{Nd}_]*)\s+(?:есть|это|суть|бысть)\s+" +
+        @"(?<expression>.+)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex DeclarationPattern();
 
     [GeneratedRegex(
-        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:\s+по\s+[\p{L}\p{Nd}_]+)?)\s+" +
-        @"(?:есть|это)\s+(?<expression>.+)$",
+        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:(?:\s+по|\s+на\s+месте)\s+" +
+        @"[\p{L}\p{Nd}_]+)?)\s+(?:есть|это|суть|бысть)\s+(?<expression>.+)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex AssignmentPattern();
 
@@ -762,42 +676,48 @@ public static partial class RusSourceEmitter
     private static partial Regex IdentifierPattern();
 
     [GeneratedRegex(
-        "^соединить\\s+(?<separator>\"(?:\\\\.|[^\"])*\"|[\\p{L}\\p{Nd}_]+)\\s+и\\s+" +
+        "^(?:соединить|сочетать|совокупить)\\s+" +
+        "(?<separator>\"(?:\\\\.|[^\"])*\"|[\\p{L}\\p{Nd}_]+)\\s+(?:и|да)\\s+" +
         "(?<values>[\\p{L}_][\\p{L}\\p{Nd}_]*)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex JoinPattern();
 
     [GeneratedRegex(
-        @"\bдлина\s+(?<values>[\p{L}_][\p{L}\p{Nd}_]*)",
+        @"\b(?:длина|мера)\s+(?<values>[\p{L}_][\p{L}\p{Nd}_]*)",
         RegexOptions.IgnoreCase)]
     private static partial Regex LengthPattern();
 
     [GeneratedRegex(
-        @"(?<array>[\p{L}_][\p{L}\p{Nd}_]*)\s+по\s+(?<index>[\p{L}\p{Nd}_]+)",
+        @"(?<array>[\p{L}_][\p{L}\p{Nd}_]*)\s+(?:по|на\s+месте)\s+" +
+        @"(?<index>[\p{L}\p{Nd}_]+)",
         RegexOptions.IgnoreCase)]
     private static partial Regex IndexAccessPattern();
 
     [GeneratedRegex(
-        @"^(?<array>[\p{L}_][\p{L}\p{Nd}_]*)\s+по\s+(?<index>[\p{L}\p{Nd}_]+)$",
+        @"^(?<array>[\p{L}_][\p{L}\p{Nd}_]*)\s+(?:по|на\s+месте)\s+" +
+        @"(?<index>[\p{L}\p{Nd}_]+)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex IndexTargetPattern();
 
     [GeneratedRegex(
-        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:\s+по\s+[\p{L}\p{Nd}_]+)?)\s+" +
-        @"(?<operation>плюс\s+плюс|минус\s+минус|увеличить|уменьшить)$",
+        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:(?:\s+по|\s+на\s+месте)\s+" +
+        @"[\p{L}\p{Nd}_]+)?)\s+(?<operation>плюс\s+плюс|минус\s+минус|" +
+        @"увеличить|уменьшить|возрасти|умалить)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex UnaryMutationPattern();
 
     [GeneratedRegex(
-        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:\s+по\s+[\p{L}\p{Nd}_]+)?)\s+" +
+        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:(?:\s+по|\s+на\s+месте)\s+" +
+        @"[\p{L}\p{Nd}_]+)?)\s+" +
         @"(?<operation>плюс\s+есть|минус\s+есть|умножить\s+есть|разделить\s+есть|" +
         @"остаток\s+есть|прибавить|убавить|умножить\s+на|разделить\s+на|" +
-        @"остаток\s+от)\s+(?<expression>.+)$",
+        @"остаток\s+от|приобщить|отъять)\s+(?<expression>.+)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex CompoundAssignmentPattern();
 
     [GeneratedRegex(
-        @"\b(?:не\s+есть|это\s+не|бля\s+буду|не\s+меньше|не\s+больше)\b",
+        @"\b(?:не\s+есть|это\s+не|не\s+суть|суть\s+не|бля\s+буду|" +
+        @"не\s+меньше|не\s+больше|не\s+менее|не\s+паче)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex ExpressionPhrasePattern();
 }
