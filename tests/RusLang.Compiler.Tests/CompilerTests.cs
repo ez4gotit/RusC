@@ -181,6 +181,84 @@ public sealed class CompilerTests : IDisposable
             static value => value.Severity == RusDiagnosticSeverity.Error);
     }
 
+    [Fact]
+    public void ObjectOrientedProgramCompiles()
+    {
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, "род.rus");
+        File.WriteAllText(
+            source,
+            """
+            отвлечённый род Живое
+                родовая черта строка имя суть ""
+                всенародный зачин при строка новое_имя
+                    сей у имя суть новое_имя
+                аминь
+                всенародное отвлечённое умение пусто представиться без деяния
+            аминь
+
+            род Воин наследует Живое
+                сокровенная черта целое сила суть 100
+                всенародный зачин при строка имя да целое мощь от предка имя
+                    сей у сила суть мощь
+                аминь
+                всенародное переиначенное умение пусто представиться
+                    молви сей у имя
+                аминь
+                всенародное умение целое узнать_силу
+                    воздать сей у сила
+                аминь
+            аминь
+
+            Князь
+                наречь богатырь суть породить Воин "Илья" да 100
+                богатырь воззови представиться
+                наречь мощь суть воззвать богатырь узнать_силу
+                молви мощь
+            аминь
+            """);
+
+        var artifact = new RusCompiler().Compile(
+            new CompilationRequest(source, "род", Debug: false, References: []),
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(
+            artifact.Diagnostics,
+            static value => value.Severity == RusDiagnosticSeverity.Error);
+        Assert.Contains("abstract class Живое", artifact.GeneratedSource, StringComparison.Ordinal);
+        Assert.Contains("class Воин : Живое", artifact.GeneratedSource, StringComparison.Ordinal);
+        Assert.Contains("private int сила", artifact.GeneratedSource, StringComparison.Ordinal);
+        Assert.Contains("public override void представиться", artifact.GeneratedSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SecretMemberCannotBeReadOutsideItsClan()
+    {
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, "сокрытие.rus");
+        File.WriteAllText(
+            source,
+            """
+            род Сокровищница
+                сокровенная черта целое злато суть 100
+            аминь
+
+            Князь
+                наречь клад суть породить Сокровищница
+                молви клад у злато
+            аминь
+            """);
+
+        var artifact = new RusCompiler().Compile(
+            new CompilationRequest(source, "сокрытие", Debug: false, References: []),
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains(
+            artifact.Diagnostics,
+            static diagnostic => diagnostic.Code == "CS0122"
+                && diagnostic.Severity == RusDiagnosticSeverity.Error);
+    }
+
     [Theory]
     [InlineData("a точно b", "if (a == b)")]
     [InlineData("a бля буду b", "if (a == b)")]

@@ -25,7 +25,9 @@ public static partial class RusSourceEmitter
             return (newline < 0 ? string.Empty : source[(newline + 1)..], []);
         }
 
-        var diagnostics = new List<RusDiagnostic>();
+        var objectEmission = RusObjectEmitter.Emit(source, sourcePath);
+        source = objectEmission.RemainingSource;
+        var diagnostics = new List<RusDiagnostic>(objectEmission.Diagnostics);
         var body = new StringBuilder();
         var blocks = new Stack<OpenBlock>();
         var variables = new HashSet<string>(StringComparer.Ordinal);
@@ -99,7 +101,7 @@ public static partial class RusSourceEmitter
                     .Append(ToOutputExpression(errorValue, variables))
                     .AppendLine(");");
             }
-            else if (TryReadArgument(line, out var exitCode, "выход", "изыди"))
+            else if (TryReadArgument(line, out var exitCode, "выход", "изыди", "воздать"))
             {
                 body.Append("return ").Append(TranslateExpression(exitCode)).AppendLine(";");
             }
@@ -195,6 +197,12 @@ public static partial class RusSourceEmitter
             }
             else
             {
+                if (TryTranslateInvocation(line, out var invocation))
+                {
+                    body.AppendLine(invocation);
+                    continue;
+                }
+
                 if (TryTranslateMutation(line, out var mutation))
                 {
                     body.AppendLine(mutation);
@@ -243,16 +251,23 @@ public static partial class RusSourceEmitter
 
             internal static class RusLangProgram
             {
-                private static int длина<T>(T[] значения) => значения.Length;
-
-                private static string соединить<T>(string разделитель, IEnumerable<T> значения) =>
-                    string.Join(разделитель, значения);
-
                 private static int Main(string[] args)
                 {
             {{Indent(body.ToString(), 8)}}
                     return 0;
                 }
+            }
+
+            {{objectEmission.Source}}
+
+            internal static class RusLangОснова
+            {
+                internal static int длина<T>(T[] значения) => значения.Length;
+
+                internal static string соединить<T>(
+                    string разделитель,
+                    IEnumerable<T> значения) =>
+                    string.Join(разделитель, значения);
             }
             """;
         return (generated, diagnostics);
@@ -320,12 +335,15 @@ public static partial class RusSourceEmitter
                 "кривда")
             || value.Contains(" по ", StringComparison.OrdinalIgnoreCase)
             || value.Contains(" на месте ", StringComparison.OrdinalIgnoreCase)
+            || value.Contains(" у ", StringComparison.OrdinalIgnoreCase)
+            || firstWord.Equals("породить", StringComparison.OrdinalIgnoreCase)
+            || firstWord.Equals("воззвать", StringComparison.OrdinalIgnoreCase)
             || value.Contains('+')
             || value.Contains('*')
             || value.Contains('/');
     }
 
-    private static string TranslateExpression(string expression)
+    internal static string TranslateExpression(string expression)
     {
         var value = expression.Trim();
         var rowKeyword = new[] { "ряд", "строй", "полк" }
@@ -340,16 +358,35 @@ public static partial class RusSourceEmitter
         var join = JoinPattern().Match(value);
         if (join.Success)
         {
-            return $"соединить({TranslateExpression(join.Groups["separator"].Value)}, " +
+            return $"RusLangОснова.соединить({TranslateExpression(join.Groups["separator"].Value)}, " +
                 $"{join.Groups["values"].Value})";
         }
 
+        var creation = ObjectCreationPattern().Match(value);
+        if (creation.Success)
+        {
+            var arguments = TranslateArguments(creation.Groups["arguments"].Value);
+            return $"new {creation.Groups["type"].Value}({arguments})";
+        }
+
+        var call = InvocationExpressionPattern().Match(value);
+        if (call.Success)
+        {
+            var receiver = TranslateReceiver(call.Groups["receiver"].Value);
+            var arguments = TranslateArguments(call.Groups["arguments"].Value);
+            return $"{receiver}.{call.Groups["method"].Value}({arguments})";
+        }
+
+        value = MemberAccessPattern().Replace(
+            value,
+            static match =>
+                $"{TranslateReceiver(match.Groups["receiver"].Value)}.{match.Groups["member"].Value}");
         value = IndexAccessPattern().Replace(
             value,
             static match => $"{match.Groups["array"].Value}[{match.Groups["index"].Value}]");
         value = LengthPattern().Replace(
             value,
-            static match => $"длина({match.Groups["values"].Value})");
+            static match => $"RusLangОснова.длина({match.Groups["values"].Value})");
         value = ReplaceExpressionPhrases(value);
 
         var result = new StringBuilder(value.Length);
@@ -425,10 +462,50 @@ public static partial class RusSourceEmitter
 
     private static string TranslateTarget(string target)
     {
+        var member = MemberTargetPattern().Match(target);
+        if (member.Success)
+        {
+            return $"{TranslateReceiver(member.Groups["receiver"].Value)}." +
+                $"{member.Groups["member"].Value}";
+        }
+
         var index = IndexTargetPattern().Match(target);
         return index.Success
             ? $"{index.Groups["array"].Value}[{index.Groups["index"].Value}]"
             : target;
+    }
+
+    private static string TranslateReceiver(string receiver) =>
+        receiver.ToLowerInvariant() switch
+        {
+            "сей" => "this",
+            "предок" => "base",
+            _ => receiver,
+        };
+
+    internal static string TranslateArguments(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return string.Join(", ", SplitByAnd(value).Select(TranslateExpression));
+    }
+
+    private static bool TryTranslateInvocation(string line, out string source)
+    {
+        var invocation = InvocationStatementPattern().Match(line);
+        if (!invocation.Success)
+        {
+            source = string.Empty;
+            return false;
+        }
+
+        var receiver = TranslateReceiver(invocation.Groups["receiver"].Value);
+        var arguments = TranslateArguments(invocation.Groups["arguments"].Value);
+        source = $"{receiver}.{invocation.Groups["method"].Value}({arguments});";
+        return true;
     }
 
     private static bool TryTranslateMutation(string line, out string source)
@@ -659,8 +736,9 @@ public static partial class RusSourceEmitter
     private static partial Regex DeclarationPattern();
 
     [GeneratedRegex(
-        @"^(?<target>[\p{L}_][\p{L}\p{Nd}_]*(?:(?:\s+по|\s+на\s+месте)\s+" +
-        @"[\p{L}\p{Nd}_]+)?)\s+(?:есть|это|суть|бысть)\s+(?<expression>.+)$",
+        @"^(?<target>(?:[\p{L}_][\p{L}\p{Nd}_]*(?:(?:\s+по|\s+на\s+месте)\s+" +
+        @"[\p{L}\p{Nd}_]+)?|(?:сей|предок|[\p{L}_][\p{L}\p{Nd}_]*)\s+у\s+" +
+        @"[\p{L}_][\p{L}\p{Nd}_]*))\s+(?:есть|это|суть|бысть)\s+(?<expression>.+)$",
         RegexOptions.IgnoreCase)]
     private static partial Regex AssignmentPattern();
 
@@ -720,4 +798,33 @@ public static partial class RusSourceEmitter
         @"не\s+меньше|не\s+больше|не\s+менее|не\s+паче)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex ExpressionPhrasePattern();
+
+    [GeneratedRegex(
+        @"\b(?<receiver>сей|предок|[\p{L}_][\p{L}\p{Nd}_]*)\s+у\s+" +
+        @"(?<member>[\p{L}_][\p{L}\p{Nd}_]*)\b",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex MemberAccessPattern();
+
+    [GeneratedRegex(
+        @"^(?<receiver>сей|предок|[\p{L}_][\p{L}\p{Nd}_]*)\s+у\s+" +
+        @"(?<member>[\p{L}_][\p{L}\p{Nd}_]*)$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex MemberTargetPattern();
+
+    [GeneratedRegex(
+        @"^породить\s+(?<type>[\p{L}_][\p{L}\p{Nd}_]*)(?:\s+(?<arguments>.+))?$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex ObjectCreationPattern();
+
+    [GeneratedRegex(
+        @"^воззвать\s+(?<receiver>сей|предок|[\p{L}_][\p{L}\p{Nd}_]*)\s+" +
+        @"(?<method>[\p{L}_][\p{L}\p{Nd}_]*)(?:\s+(?<arguments>.+))?$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex InvocationExpressionPattern();
+
+    [GeneratedRegex(
+        @"^(?<receiver>сей|предок|[\p{L}_][\p{L}\p{Nd}_]*)\s+воззови\s+" +
+        @"(?<method>[\p{L}_][\p{L}\p{Nd}_]*)(?:\s+(?<arguments>.+))?$",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex InvocationStatementPattern();
 }
